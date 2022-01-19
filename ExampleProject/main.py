@@ -1,3 +1,6 @@
+#  This Example script reads a valuation date from the local.conf configuration file.  It then uses that date to retrieve 10 columns of data for 
+#  cedent AEL.   That information is then output to an Excel file - example_output.xlsx.
+
 import pyodbc
 import pandas as pd
 import configparser as cfg
@@ -13,9 +16,6 @@ def load_config():
     Config = cfg.ConfigParser()
 
     Config.read(r'.\\local.conf')
-    print(Config.sections())
-    valuation_date = Config['Settings']['valuation_date']
-    print(valuation_date)
  
     return Config
 
@@ -28,10 +28,11 @@ def get_sql_table(valuation_date):
                               'Database=AHLDW;'
                               'Trusted_Connection=yes;')
 
-    query = "select top 10 ClientShortName, NewOrSurviving, ValuationDate, Entity, ProductType, ProductName, PolicyNumber, ModelPlan, \
-PlanCode, PolicyCount, AccountValueTotal from AHLDW.rpt.AILPlus where ClientShortName='AEL' \
+    query = "select top 10 ClientShortName, NewOrSurviving, ValuationDate, Entity, ProductType, ProductName, PolicyNumber, ModelPlan, PlanCode, PolicyCount, AccountValueTotal from AHLDW.rpt.AILPlus where ClientShortName='AEL' \
 and ValuationDate=\'" + val_date  + "\'" + " and NewOrSurviving='_\'" + " and ActualOrEstimate = 'A\'"
-			
+
+    print("SQL query: ", query)
+
     data_frame = pd.read_sql_query(str(query), conn)
         
     return data_frame
@@ -55,13 +56,13 @@ print("Load Configuration")
 
 Config = load_config()
 
-valuation_date = Config.read(Config['Settings']['valuation_date'])
+valuation_date = Config['Settings']['valuation_date']
 
-print(f'This is an example of loading values from a config file: ', valuation_date)
-
+print("Valuation date from config file: ", valuation_date)
 df = get_sql_table(valuation_date)
 
 print(df)
+print("Writing to Excel example_output.xlsx")
 
 write_excel_file(".\output\example_output.xlsx", df)
 
