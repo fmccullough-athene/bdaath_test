@@ -1,102 +1,67 @@
-import sys
-
-'''
-This is how you add your own methods.
-Create a folder, and place your classes inside the folder. Then add the folder to your sys.path, and import.
-'''
-sys.path.insert(0, "./ExampleProject")
-from ExampleProject.exampleclass import example_class
-
-
+import pyodbc
+import pandas as pd
 import configparser as cfg
-import argparse
 
+
+#  python methods called from the main code
 
 def load_config():
+    global Config
+    '''
+    Load the config files here:
+    '''
     Config = cfg.ConfigParser()
-    '''
-    Place local.conf in the 'conf' folder of your project
-    '''
-    Config.read(r'.\conf\local.conf')
-    '''
-    Place resources.conf in the path defined by the 'resource_conf_file' setting in the local.conf file.
-    This should be: C:/Development/Python/conf/resources
-    '''
-    resourcepath = Config.read(Config['Settings']['resource_conf_file'])
 
-    print("load_config: ", resourcepath)
-
+    Config.read(r'.\\local.conf')
+    print(Config.sections())
+    valuation_date = Config['Settings']['valuation_date']
+    print(valuation_date)
+ 
     return Config
 
-def example_of_using_class(string):
-    '''
-    These are some examples of how to use a method from an imported class.
-    '''
-    example_class.example_method()
-    example_class.second_example_method(string)
-    print(example_class.second_example_method(string))
+def get_sql_table(valuation_date):
+
+    val_date = valuation_date
+
+    conn = pyodbc.connect('Driver={SQL Server};'
+                              'Server=ATHPRODBIDB01;'
+                              'Database=AHLDW;'
+                              'Trusted_Connection=yes;')
+
+    query = "select top 10 ClientShortName, NewOrSurviving, ValuationDate, Entity, ProductType, ProductName, PolicyNumber, ModelPlan, \
+PlanCode, PolicyCount, AccountValueTotal from AHLDW.rpt.AILPlus where ClientShortName='AEL' \
+and ValuationDate=\'" + val_date  + "\'" + " and NewOrSurviving='_\'" + " and ActualOrEstimate = 'A\'"
+			
+    data_frame = pd.read_sql_query(str(query), conn)
+        
+    return data_frame
+	
+	
+def write_excel_file(output_file_path, output_data_frame):
+
+    Excelwriter = pd.ExcelWriter(output_file_path, engine="xlsxwriter")
+    output_data_frame.to_excel(Excelwriter, sheet_name="Output" ,index=True)
+    Excelwriter.close()
+
     return
 
-''''
-This defines the 'main' method.
-'''
-def main():
-
-    print("Here1")
-
-    parser = argparse.ArgumentParser()
-    '''
-    This is where your arguments are defined.
-    '''
-    parser.add_argument("-a", "--argument", help="this is an argument")
-    
-    args = parser.parse_args()
-
-    '''
-    Set a variable to the value of your argument, for use later in the program.
-    '''
-    argument_value = args.argument
-    
-    '''
-    Load values from your config.
-    '''
-    print("Here1")
-
-    Config = load_config()
-
-    
-    
-    '''
-    This is how to get the connection string:
-    Get the path to the db_SQL_AHLDW_prod file, which contains the connection string.
-    '''
-    print("Here2")
-
-    Config.read(Config['Resources']['db_SQL_AHLDW_prod'])
-
-    #print("From Resources db_SQL_AHLDW_prod: ", viewit1)
-
-    '''
-    Now you can access the connection_string
-    '''
-    connection_string = Config['Resource']['connection_string']
-    print (connection_string)
-
-
-    print(f'This is an example of accessing an argument: {argument_value}')
-    example_of_using_class(argument_value)
-
-
-
 
 '''
-This is where the program begins running.
+This section is the main method that calls the defined methods above
 '''
-if __name__ == '__main__':
-    '''
-    When the program starts, it runs the 'main' method.
-    '''
-    print("Starting")
+#Load values from your config.
 
-    main()
+print("Load Configuration")
+
+Config = load_config()
+
+valuation_date = Config.read(Config['Settings']['valuation_date'])
+
+print(f'This is an example of loading values from a config file: ', valuation_date)
+
+df = get_sql_table(valuation_date)
+
+print(df)
+
+write_excel_file(".\output\example_output.xlsx", df)
 
